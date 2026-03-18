@@ -272,26 +272,21 @@ class SpeechGUINode(Node):
         grid = tk.Frame(quick_inner, bg=CARD)
         grid.pack(fill="x")
 
-        # BTN
-        ttk.Button(grid, text="⬆️ เลื่อนขึ้น (ทันที)",
-                style="Action.TButton",
-                command=lambda: self.on_send_text("เลื่อนขึ้น"))\
-            .grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
+        # ---------- Move / Scroll directions ----------
+        
+        ttk.Button(
+            grid,
+            text="↩️ หมุนซ้าย",
+            style="Action.TButton",
+            command=lambda: self.on_send_text("หมุนซ้าย")
+        ).grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
 
-        ttk.Button(grid, text="⬇️ เลื่อนลง (ทันที)",
-                style="Action.TButton",
-                command=lambda: self.on_send_text("เลื่อนลง"))\
-            .grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=(0, 8))
-
-        ttk.Button(grid, text="↩️ หมุนซ้าย (ระบุมุม)",
-                style="Action.TButton",
-                command=lambda: self.on_choose_rotate("left"))\
-            .grid(row=1, column=0, sticky="ew", padx=(0, 8))
-
-        ttk.Button(grid, text="↪️ หมุนขวา (ระบุมุม)",
-                style="Action.TButton",
-                command=lambda: self.on_choose_rotate("right"))\
-            .grid(row=1, column=1, sticky="ew", padx=(8, 0))
+        ttk.Button(
+            grid,
+            text="↪️ หมุนขวา",
+            style="Action.TButton",
+            command=lambda: self.on_send_text("หมุนขวา")
+        ).grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=(0, 8))
 
         grid.columnconfigure(0, weight=1)
         grid.columnconfigure(1, weight=1)
@@ -335,7 +330,17 @@ class SpeechGUINode(Node):
             style="Action.TButton",
             command=self.toggle_logger_gui
         )
-        self.logger_gui_button.pack(fill="x", pady=(6, 0))
+        self.logger_gui_button.pack(fill="x", pady=(6, 0))       
+        
+        # Robot Action Panel
+        ttk.Label(
+            quick_inner,
+            text="Robot Actions",
+            style="Hint.TLabel"
+        ).pack(anchor="w", pady=(18, 8))
+
+        robot_frame = tk.Frame(quick_inner, bg=CARD)
+        robot_frame.pack(fill="x")
 
         # ---------- debug card ----------
         debug_card, debug_inner = _rounded_frame(left, bg=CARD, pad=14)
@@ -444,8 +449,96 @@ class SpeechGUINode(Node):
                    command=lambda: self.on_choose_rotate("right"))\
             .grid(row=0, column=1, sticky="ew", padx=6, pady=6)
 
+        # ---------- Position buttons 1-5 ----------
+        pos_grid2 = tk.Frame(robot_frame, bg=CARD)
+        pos_grid2.pack(fill="x", pady=(0, 10))
+
+        for i in range(5):
+            btn = ttk.Button(
+                pos_grid2,
+                text=f"📍 ตำแหน่ง {i+1}",
+                style="Small.TButton",
+                command=lambda k=i+1: self.on_send_position_direct(k)
+            )
+            btn.grid(row=0, column=i, sticky="ew", padx=4, pady=4)
+
+        for i in range(5):
+            pos_grid2.columnconfigure(i, weight=1)
+
+        # ---------- Pick / Place ----------
+        pick_place_grid = tk.Frame(robot_frame, bg=CARD)
+        pick_place_grid.pack(fill="x", pady=(0, 10))
+        pick_place_grid.columnconfigure(0, weight=1)
+        pick_place_grid.columnconfigure(1, weight=1)
+
+        ttk.Button(
+            pick_place_grid,
+            text="🤏 หยิบของ",
+            style="Action.TButton",
+            command=self.on_pick_object
+        ).grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=4)
+
+        ttk.Button(
+            pick_place_grid,
+            text="📦 วางของ",
+            style="Action.TButton",
+            command=self.on_place_object
+        ).grid(row=0, column=1, sticky="ew", padx=(6, 0), pady=4)
+
+        # ---------- Move directions + Scroll ----------
+        move_grid = tk.Frame(robot_frame, bg=CARD)
+        move_grid.pack(fill="x", pady=(0, 4))
+
+        move_grid.columnconfigure(0, weight=1)
+        move_grid.columnconfigure(1, weight=1)
+
+        # Row 0
+        ttk.Button(
+            move_grid,
+            text="⬆️ ขยับหน้า",
+            style="Action.TButton",
+            command=lambda: self.on_move_direction("front")
+        ).grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=4)
+
+        ttk.Button(
+            move_grid,
+            text="⬇️ ขยับหลัง",
+            style="Action.TButton",
+            command=lambda: self.on_move_direction("back")
+        ).grid(row=0, column=1, sticky="ew", padx=(6, 0), pady=4)
+
+        # Row 1
+        ttk.Button(
+            move_grid,
+            text="⬅️ ขยับซ้าย",
+            style="Action.TButton",
+            command=lambda: self.on_move_direction("left")
+        ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=4)
+
+        ttk.Button(
+            move_grid,
+            text="➡️ ขยับขวา",
+            style="Action.TButton",
+            command=lambda: self.on_move_direction("right")
+        ).grid(row=1, column=1, sticky="ew", padx=(6, 0), pady=4)
+
+        # Row 2 = เลื่อนขึ้น / เลื่อนลง
+        ttk.Button(
+            move_grid,
+            text="🔼 เลื่อนขึ้น",
+            style="Action.TButton",
+            command=lambda: self.on_send_text("เลื่อนขึ้น")
+        ).grid(row=2, column=0, sticky="ew", padx=(0, 6), pady=4)
+
+        ttk.Button(
+            move_grid,
+            text="🔽 เลื่อนลง",
+            style="Action.TButton",
+            command=lambda: self.on_send_text("เลื่อนลง")
+        ).grid(row=2, column=1, sticky="ew", padx=(6, 0), pady=4)
+
         # hide panels initially
-        self.hide_pos()
+        self.hide_pos()  
         self.hide_scroll()
         self.hide_rotate()
 
@@ -633,11 +726,47 @@ class SpeechGUINode(Node):
         self.last_badge.config(text=f"Last: ROTATE:{direction}")
         self._pub_event(f"ROTATE:{direction}")
 
+    def on_send_position_direct(self, k: int):
+        cmd = f"POS:{k}"
+        self.last_badge.config(text=f"Last: {cmd}")
+        self.result_label.config(text=f"Text: ไปตำแหน่งที่ {k}")
+        self._pub_event(cmd)
+        self._dbg(f"Direct position -> {cmd}")
+
+    def on_pick_object(self):
+        cmd = "TEXT:หยิบของ"
+        self.last_badge.config(text=f"Last: {cmd}")
+        self.result_label.config(text="Text: หยิบของ")
+        self._pub_event(cmd)
+        self._dbg("Robot action -> TEXT:หยิบของ")
+
+    def on_place_object(self):
+        cmd = "TEXT:วางของ"
+        self.last_badge.config(text=f"Last: {cmd}")
+        self.result_label.config(text="Text: วางของ")
+        self._pub_event(cmd)
+        self._dbg("Robot action -> TEXT:วางของ")
+
+    def on_move_direction(self, direction: str):
+        th_map = {
+            "front": "ขยับหน้า",
+            "back": "ขยับหลัง",
+            "left": "ขยับซ้าย",
+            "right": "ขยับขวา",
+        }
+        text_th = th_map.get(direction, direction)
+        cmd = f"TEXT:{text_th}"
+
+        self.last_badge.config(text=f"Last: {cmd}")
+        self.result_label.config(text=f"Text: {text_th}")
+        self._pub_event(cmd)
+        self._dbg(f"Robot move -> {cmd}")
+
     def show_pos(self):
         if self._ui_pos_visible:
             return
         self._ui_pos_visible = True
-        self.pos_hint.config(text="ตำแหน่ง: เลือก 1–5 หรือพูดเลข 1–5")
+        self.pos_hint.config(text="ตำแหน่ง: เลือก 1-5 หรือพูดเลข 1-5")
         self.pos_frame.pack(fill="x", pady=(0, 14))
         self._dbg("UI: SHOW_POS")
 
