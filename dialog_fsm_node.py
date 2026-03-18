@@ -1310,16 +1310,61 @@ class DialogFSMNode(Node):
                 self._event("GUI:SEND_TEXT")
                 self._dbg(f"send_to_nlu (gui text) text='{t}'")
             return
+        
+                # ---------------- direct robot action buttons ----------------
+        if data == "ACTION:PICK":
+            phrase = "หยิบของ"
+            self.gui_cmd(f"SET_RESULT:Text: {phrase}")
+            self.publish_text_raw(phrase)
+            self.publish_feedback(f"ส่งให้ NLU แล้ว: {phrase}")
+            self._event("GUI:ACTION:PICK")
+            self._dbg("send_to_nlu (gui action) ACTION:PICK -> หยิบของ")
+            return
+
+        if data == "ACTION:PLACE":
+            phrase = "วางของ"
+            self.gui_cmd(f"SET_RESULT:Text: {phrase}")
+            self.publish_text_raw(phrase)
+            self.publish_feedback(f"ส่งให้ NLU แล้ว: {phrase}")
+            self._event("GUI:ACTION:PLACE")
+            self._dbg("send_to_nlu (gui action) ACTION:PLACE -> วางของ")
+            return
+
+        if data.startswith("MOVE:"):
+            direction = data.split(":", 1)[1].strip().lower()
+
+            move_map = {
+                "front": "ขยับหน้า",
+                "forward": "ขยับหน้า",
+                "back": "ขยับหลัง",
+                "left": "ขยับซ้าย",
+                "right": "ขยับขวา",
+                "up": "ขยับขึ้น",
+                "down": "ขยับลง",
+            }
+
+            phrase = move_map.get(direction)
+            if not phrase:
+                self._dbg(f"unknown MOVE direction from GUI: '{direction}'")
+                return
+
+            self.gui_cmd(f"SET_RESULT:Text: {phrase}")
+            self.publish_text_raw(phrase)
+            self.publish_feedback(f"ส่งให้ NLU แล้ว: {phrase}")
+            self._event(f"GUI:MOVE:{direction}")
+            self._dbg(f"send_to_nlu (gui move) MOVE:{direction} -> {phrase}")
+            return
 
         if data.startswith("POS:"):
             try:
                 k = int(data.split(":", 1)[1])
             except Exception:
                 return
+
             if k not in (1, 2, 3, 4, 5):
                 return
-            self._event(f"GUI:POS:{k}")
 
+            self._event(f"GUI:POS:{k}")
             with self._lock:
                 dm = self._dialog_mode
                 vk = self._dialog_dir
@@ -1330,19 +1375,44 @@ class DialogFSMNode(Node):
                     f"มุมมองข้าง ตำแหน่งที่ {k}" if vk == "side" else
                     f"ตำแหน่งที่ {k}"
                 )
+
                 self._finalize_phrase(
                     phrase,
                     hide_pos=True,
                     status=" Idle: รอคำว่า 'สวัสดี'",
                     event_tag=f"DIALOG:FINALIZE:VIEW_POS:{vk or 'unknown'}:{k}",
                 )
-            else:
-                self._finalize_phrase(
-                    f"ตำแหน่งที่ {k}",
-                    hide_pos=True,
-                    status=" Idle: รอคำว่า 'สวัสดี'",
-                    event_tag=f"DIALOG:FINALIZE:POS:{k}",
-                )
+                return
+
+            # DIRECT POS COMMAND 
+            phrase = f"ตำแหน่งที่ {k}"
+            if dm is not None:
+                self._cancel_dialog_timeout()
+                self._send_stt_control("CANCEL")
+                self.gui_cmd("HIDE_POS")
+                self.gui_cmd("HIDE_SCROLL")
+                self.gui_cmd("HIDE_ROTATE")
+
+                with self._lock:
+                    self._dialog_mode = None
+                    self._dialog_dir = None
+                    self._dialog_retry = 0
+                    self._mode = "idle"
+                    self._armed = False
+                    self._pending_listen_beep = False
+                    self._wake_timeout_deadline_ts = None
+                    self._wake_timeout_reason = "wake"
+
+                self._set_speech_armed(False)
+                self._dbg(f"POS direct overrides dialog -> cancel current dialog mode={dm}")
+
+            # ส่งไป NLU ทันที
+            self.gui_cmd(f"SET_RESULT:Text: {phrase}")
+            self.publish_text_raw(phrase)
+            self.publish_feedback(f"ส่งให้ NLU แล้ว: {phrase}")
+            self.gui_cmd("SET_STATUS: Idle: ส่งคำสั่งตำแหน่งแล้ว")
+            self._event(f"GUI:POS:DIRECT:{k}")
+            self._dbg(f"send_to_nlu (gui direct pos) POS:{k} -> {phrase}")
             return
 
         if data.startswith("SCROLL:"):
